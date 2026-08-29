@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tanzania Business OS
 
-## Getting Started
+A ledger-first business operating system for informal retailers in Tanzania.
+**Credit & Debt Tracking** is fully functional on Supabase; Inventory, Payments &
+Reconciliation, and Reports are navigable, polished screens on mock data — see
+the case study at `/` for the full story.
 
-First, run the development server:
+## Stack
+
+Next.js 16 (App Router, Turbopack) · Supabase (Postgres + Auth) · Tailwind CSS v4 · GSAP
+
+## Getting started
+
+```bash
+npm install
+cp .env.local.example .env.local
+```
+
+Fill in `.env.local` with your Supabase project's URL and anon key (Project
+Settings → API in the Supabase dashboard). Then apply the schema:
+
+```bash
+# In the Supabase SQL editor, run:
+supabase/migrations/0001_init.sql
+```
+
+That creates `shops`, `customers`, `credit_entries`, `payments`, the
+`customer_balances` view, and row-level security policies scoped per shop —
+plus a trigger that provisions a `shops` row the moment someone signs up.
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- `/` — the landing / case study page (works with no Supabase config)
+- `/login` — create a shop or sign in
+- `/app/dashboard` — the app shell, once signed in
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `app/app/credit/**` — the live Credit & Debt module
+- `app/app/{inventory,payments,reports}` — stubbed modules on mock data (`lib/mock/`)
+- `lib/actions/` — server actions (auth, credit ledger reads/writes)
+- `lib/supabase/` — browser/server/proxy Supabase clients
+- `components/landing/` — the GSAP-animated case study page
+- `supabase/migrations/` — schema and RLS policies
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev     # start the dev server (Turbopack)
+npm run build   # production build
+npm run lint    # eslint
+```

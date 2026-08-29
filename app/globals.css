@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
+/*
+  Paper-and-Ink Instrument — design tokens.
+  A single deliberate light "ledger paper" theme, not a light/dark pair:
+  the whole point is that it reads like a physical ledger book, which
+  doesn't have a night mode.
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f3ecdc;
+  --paper-raised: #faf6ea;
+  --paper-deep: #e7ddc4;
+  --paper-well: #ded2b2;
+
+  --ink: #1e2130;
+  --ink-soft: #56503f;
+  --ink-faint: #8a8271;
+
+  --accent: #7a2331;
+  --accent-strong: #57171f;
+  --accent-soft: #f0dbd8;
+
+  --positive: #3f6b4b;
+  --positive-soft: #dfe8dd;
+  --negative: #a6362a;
+  --negative-soft: #f3ddd6;
+  --warning: #966a1f;
+  --warning-soft: #f1e3c6;
+
+  --rule: rgba(30, 33, 48, 0.14);
+  --rule-strong: rgba(30, 33, 48, 0.26);
+
+  --shadow-card: 0 1px 2px rgba(38, 27, 14, 0.07), 0 6px 16px -4px rgba(38, 27, 14, 0.1);
+  --shadow-pop: 0 2px 4px rgba(38, 27, 14, 0.1), 0 12px 28px -6px rgba(38, 27, 14, 0.18);
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 9px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-paper-deep: var(--paper-deep);
+  --color-paper-well: var(--paper-well);
+
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-positive: var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-negative: var(--negative);
+  --color-negative-soft: var(--negative-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+
+  --font-serif: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  --font-sans: var(--font-plex), "Segoe UI", system-ui, sans-serif;
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--rule);
+}
+
+html {
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* Ruled-ledger background, used sparingly on section dividers and app panes */
+.ledger-lines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 31px,
+    var(--rule) 31px,
+    var(--rule) 32px
+  );
+}
+
+/* Faint paper grain, meant for large hero/section surfaces only */
+.paper-grain {
+  position: relative;
+  isolation: isolate;
+}
+.paper-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.11  0 0 0 0 0.1  0 0 0 0 0.07  0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Deliberate, tactile focus ring — ink underline, not a glowing SaaS halo */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
 }
