@@ -37,7 +37,7 @@ export default async function StatementPage(
 
   return (
     <div className="mx-auto max-w-xl px-4 py-8 sm:px-6 print:max-w-none print:px-0 print:py-0">
-      <div className="mb-4 flex items-center justify-between print:hidden">
+      <div className="mb-4 flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
         <Link
           href={`/app/credit/${customerId}`}
           className="text-sm text-ink-soft hover:text-ink"

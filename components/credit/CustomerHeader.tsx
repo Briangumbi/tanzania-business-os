@@ -130,22 +130,26 @@ function EditCustomerForm({
 
       <div className="border-t border-rule pt-4">
         {confirmingDelete ? (
-          <div className="flex items-center gap-2">
-            <p className="flex-1 text-sm text-negative">Delete {customer.name} and their whole ledger?</p>
-            <Button
-              type="button"
-              variant="danger"
-              disabled={deleting}
-              onClick={() => {
-                setDeleting(true);
-                deleteCustomer(customer.customer_id);
-              }}
-            >
-              {deleting ? "Deleting…" : "Confirm"}
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setConfirmingDelete(false)}>
-              Cancel
-            </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
+            <p className="text-sm text-negative sm:flex-1">
+              Delete {customer.name} and their whole ledger?
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="danger"
+                disabled={deleting}
+                onClick={() => {
+                  setDeleting(true);
+                  deleteCustomer(customer.customer_id);
+                }}
+              >
+                {deleting ? "Deleting…" : "Confirm"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                Cancel
+              </Button>
+            </div>
           </div>
         ) : (
           <button

@@ -18,18 +18,29 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const supabase = createClient();
 
+    // Only trust a URL that actually carries recovery-flow parameters —
+    // checking "is there any session at all" would also pass for someone
+    // who's simply already logged in normally and lands on this URL, which
+    // isn't proof they came from a reset email.
+    const hasRecoveryParams =
+      window.location.hash.includes("type=recovery") ||
+      new URLSearchParams(window.location.search).has("code");
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setReady(true);
     });
 
-    // The recovery link may have already been processed by the time this
-    // effect runs, in which case the event above won't fire again — fall
-    // back to checking for an active session directly.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
-    });
+    // The link may have already been processed (and the event fired) by the
+    // time this effect runs — if the URL says this was a recovery link,
+    // confirm the resulting session directly rather than waiting on the
+    // event a second time.
+    if (hasRecoveryParams) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) setReady(true);
+      });
+    }
 
     return () => subscription.unsubscribe();
   }, []);

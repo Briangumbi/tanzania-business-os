@@ -58,13 +58,20 @@ export function EditableLedgerRow({
   );
 }
 
-function DeleteRow({ onConfirm }: { onConfirm: () => void }) {
-  const [confirming, setConfirming] = useState(false);
+function DeleteRow({
+  onConfirm,
+  confirming,
+  onConfirmingChange,
+}: {
+  onConfirm: () => void;
+  confirming: boolean;
+  onConfirmingChange: (confirming: boolean) => void;
+}) {
   const [deleting, setDeleting] = useState(false);
 
   if (confirming) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <p className="flex-1 text-xs text-negative">Delete this entry?</p>
         <Button
           type="button"
@@ -82,7 +89,7 @@ function DeleteRow({ onConfirm }: { onConfirm: () => void }) {
           type="button"
           variant="ghost"
           className="px-3 py-1.5 text-xs"
-          onClick={() => setConfirming(false)}
+          onClick={() => onConfirmingChange(false)}
         >
           Cancel
         </Button>
@@ -93,7 +100,7 @@ function DeleteRow({ onConfirm }: { onConfirm: () => void }) {
   return (
     <button
       type="button"
-      onClick={() => setConfirming(true)}
+      onClick={() => onConfirmingChange(true)}
       className="text-xs text-negative hover:underline"
     >
       Delete
@@ -112,6 +119,7 @@ function EditCreditEntryForm({
 }) {
   const [state, formAction, pending] = useActionState(updateCreditEntry, initialState);
   const wasPending = useRef(false);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
 
   useEffect(() => {
     if (wasPending.current && !pending && !state.error) onDone();
@@ -140,16 +148,22 @@ function EditCreditEntryForm({
         <Input id={`due-${row.id}`} name="dueDate" type="date" defaultValue={row.dueDate ?? ""} />
       </Field>
       {state.error ? <p className="text-sm text-negative">{state.error}</p> : null}
-      <div className="flex items-center justify-between gap-2">
-        <DeleteRow onConfirm={() => deleteCreditEntry(row.id, customerId)} />
-        <div className="flex gap-2">
-          <Button type="button" variant="ghost" className="px-3 py-1.5 text-xs" onClick={onDone}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={pending} className="px-3 py-1.5 text-xs">
-            {pending ? "Saving…" : "Save"}
-          </Button>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DeleteRow
+          onConfirm={() => deleteCreditEntry(row.id, customerId)}
+          confirming={deleteConfirming}
+          onConfirmingChange={setDeleteConfirming}
+        />
+        {!deleteConfirming ? (
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" className="px-3 py-1.5 text-xs" onClick={onDone}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={pending} className="px-3 py-1.5 text-xs">
+              {pending ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        ) : null}
       </div>
     </form>
   );
@@ -166,6 +180,7 @@ function EditPaymentForm({
 }) {
   const [state, formAction, pending] = useActionState(updatePayment, initialState);
   const wasPending = useRef(false);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
 
   useEffect(() => {
     if (wasPending.current && !pending && !state.error) onDone();
@@ -191,16 +206,22 @@ function EditPaymentForm({
         <Input id={`pnote-${row.id}`} name="note" defaultValue={row.detail ?? ""} />
       </Field>
       {state.error ? <p className="text-sm text-negative">{state.error}</p> : null}
-      <div className="flex items-center justify-between gap-2">
-        <DeleteRow onConfirm={() => deletePayment(row.id, customerId)} />
-        <div className="flex gap-2">
-          <Button type="button" variant="ghost" className="px-3 py-1.5 text-xs" onClick={onDone}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={pending} className="px-3 py-1.5 text-xs">
-            {pending ? "Saving…" : "Save"}
-          </Button>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DeleteRow
+          onConfirm={() => deletePayment(row.id, customerId)}
+          confirming={deleteConfirming}
+          onConfirmingChange={setDeleteConfirming}
+        />
+        {!deleteConfirming ? (
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" className="px-3 py-1.5 text-xs" onClick={onDone}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={pending} className="px-3 py-1.5 text-xs">
+              {pending ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        ) : null}
       </div>
     </form>
   );
