@@ -27,22 +27,46 @@ export type CustomerBalance = {
   next_due_date: string | null;
 };
 
-export async function listCustomers(search?: string): Promise<CustomerBalance[]> {
+export type CustomerSort = "balance" | "name" | "recent";
+export type CustomerFilter = "all" | "overdue" | "settled";
+
+export async function listCustomers(
+  search?: string,
+  sort: CustomerSort = "balance",
+  filter: CustomerFilter = "all"
+): Promise<CustomerBalance[]> {
   const { supabase, shopId } = await requireShop();
-  let query = supabase
-    .from("customer_balances")
-    .select("*")
-    .eq("shop_id", shopId)
-    .order("balance", { ascending: false });
+  let query = supabase.from("customer_balances").select("*").eq("shop_id", shopId);
 
   if (search?.trim()) {
     const term = search.trim();
     query = query.or(`name.ilike.%${term}%,phone.ilike.%${term}%`);
   }
 
+  const today = new Date().toISOString().slice(0, 10);
+  if (filter === "overdue") {
+    query = query.gt("balance", 0).lt("next_due_date", today);
+  } else if (filter === "settled") {
+    query = query.lte("balance", 0);
+  }
+
+  if (sort === "name") {
+    query = query.order("name", { ascending: true });
+  } else if (sort === "recent") {
+    query = query.order("last_activity_at", { ascending: false, nullsFirst: false });
+  } else {
+    query = query.order("balance", { ascending: false });
+  }
+
   const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
+}
+
+export async function getShopName(): Promise<string> {
+  const { supabase, shopId } = await requireShop();
+  const { data } = await supabase.from("shops").select("name").eq("id", shopId).single();
+  return data?.name ?? "My Duka";
 }
 
 export async function getDashboardData() {
@@ -289,4 +313,122 @@ export async function addPayment(
   revalidatePath("/app/credit");
   revalidatePath("/app/dashboard");
   return { error: null };
+}
+
+export async function updateCustomer(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  const { supabase, shopId } = await requireShop();
+  const customerId = String(formData.get("customerId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+
+  if (!name) return { error: "Name is required." };
+  if (!phone) return { error: "Phone is required." };
+
+  const { error } = await supabase
+    .from("customers")
+    .update({ name, phone, notes })
+    .eq("id", customerId)
+    .eq("shop_id", shopId);
+  if (error) return { error: "Could not update customer." };
+
+  revalidatePath(`/app/credit/${customerId}`);
+  revalidatePath("/app/credit");
+  return { error: null };
+}
+
+export async function deleteCustomer(customerId: string) {
+  const { supabase, shopId } = await requireShop();
+  const { error } = await supabase
+    .from("customers")
+    .delete()
+    .eq("id", customerId)
+    .eq("shop_id", shopId);
+  if (error) throw error;
+
+  revalidatePath("/app/credit");
+  revalidatePath("/app/dashboard");
+  redirect("/app/credit");
+}
+
+export async function updateCreditEntry(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  const { supabase, shopId } = await requireShop();
+  const entryId = String(formData.get("entryId") ?? "");
+  const customerId = String(formData.get("customerId") ?? "");
+  const amount = Number(formData.get("amount"));
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const dueDate = String(formData.get("dueDate") ?? "").trim() || null;
+
+  if (!amount || amount <= 0) return { error: "Enter a valid amount." };
+
+  const { error } = await supabase
+    .from("credit_entries")
+    .update({ amount, description, due_date: dueDate })
+    .eq("id", entryId)
+    .eq("shop_id", shopId);
+  if (error) return { error: "Could not update the entry." };
+
+  revalidatePath(`/app/credit/${customerId}`);
+  revalidatePath("/app/credit");
+  revalidatePath("/app/dashboard");
+  return { error: null };
+}
+
+export async function deleteCreditEntry(entryId: string, customerId: string) {
+  const { supabase, shopId } = await requireShop();
+  const { error } = await supabase
+    .from("credit_entries")
+    .delete()
+    .eq("id", entryId)
+    .eq("shop_id", shopId);
+  if (error) throw error;
+
+  revalidatePath(`/app/credit/${customerId}`);
+  revalidatePath("/app/credit");
+  revalidatePath("/app/dashboard");
+}
+
+export async function updatePayment(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  const { supabase, shopId } = await requireShop();
+  const paymentId = String(formData.get("paymentId") ?? "");
+  const customerId = String(formData.get("customerId") ?? "");
+  const amount = Number(formData.get("amount"));
+  const note = String(formData.get("note") ?? "").trim() || null;
+
+  if (!amount || amount <= 0) return { error: "Enter a valid amount." };
+
+  const { error } = await supabase
+    .from("payments")
+    .update({ amount, note })
+    .eq("id", paymentId)
+    .eq("shop_id", shopId);
+  if (error) return { error: "Could not update the payment." };
+
+  revalidatePath(`/app/credit/${customerId}`);
+  revalidatePath("/app/credit");
+  revalidatePath("/app/dashboard");
+  return { error: null };
+}
+
+export async function deletePayment(paymentId: string, customerId: string) {
+  const { supabase, shopId } = await requireShop();
+  const { error } = await supabase
+    .from("payments")
+    .delete()
+    .eq("id", paymentId)
+    .eq("shop_id", shopId);
+  if (error) throw error;
+
+  revalidatePath(`/app/credit/${customerId}`);
+  revalidatePath("/app/credit");
+  revalidatePath("/app/dashboard");
 }

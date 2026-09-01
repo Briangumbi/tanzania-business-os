@@ -19,7 +19,7 @@ export function AppShell({
   return (
     <div className="flex min-h-screen bg-paper">
       {/* Desktop sidebar */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-rule bg-paper-raised md:flex">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-rule bg-paper-raised md:flex print:hidden">
         <div className="border-b border-rule px-6 py-5">
           <Link href="/app/dashboard" className="font-serif text-lg font-medium text-ink">
             Tanzania Business OS
@@ -62,7 +62,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile topbar */}
-        <header className="flex items-center justify-between border-b border-rule bg-paper-raised px-4 py-3 md:hidden">
+        <header className="flex items-center justify-between border-b border-rule bg-paper-raised px-4 py-3 md:hidden print:hidden">
           <span className="font-serif text-base font-medium text-ink">
             Tanzania Business OS
           </span>
@@ -80,7 +80,7 @@ export function AppShell({
         <main className="flex-1 pb-20 md:pb-0">{children}</main>
 
         {/* Mobile bottom nav */}
-        <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-rule bg-paper-raised md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-rule bg-paper-raised md:hidden print:hidden">
           {navItems.map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(item.href + "/");

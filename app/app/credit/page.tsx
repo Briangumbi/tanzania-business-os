@@ -1,14 +1,31 @@
 import Link from "next/link";
-import { listCustomers } from "@/lib/actions/credit";
+import { Suspense } from "react";
+import { listCustomers, type CustomerSort, type CustomerFilter } from "@/lib/actions/credit";
 import { SearchBox } from "@/components/credit/SearchBox";
+import { FilterBar } from "@/components/credit/FilterBar";
 import { CustomerRow } from "@/components/credit/CustomerRow";
 import { Button } from "@/components/ui/Button";
 import { PlusIcon } from "@/components/nav/icons";
 
+const sortLabels: Record<CustomerSort, string> = {
+  balance: "highest balance first",
+  name: "sorted A–Z",
+  recent: "most recent activity first",
+};
+
 export default async function CreditPage(props: PageProps<"/app/credit">) {
   const searchParams = await props.searchParams;
   const q = typeof searchParams.q === "string" ? searchParams.q : "";
-  const customers = await listCustomers(q);
+  const sort: CustomerSort =
+    searchParams.sort === "name" || searchParams.sort === "recent"
+      ? searchParams.sort
+      : "balance";
+  const filter: CustomerFilter =
+    searchParams.filter === "overdue" || searchParams.filter === "settled"
+      ? searchParams.filter
+      : "all";
+
+  const customers = await listCustomers(q, sort, filter);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
@@ -16,8 +33,8 @@ export default async function CreditPage(props: PageProps<"/app/credit">) {
         <div>
           <h1 className="font-serif text-2xl font-medium text-ink">Credit &amp; Debt</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            {customers.length} {customers.length === 1 ? "customer" : "customers"},
-            highest balance first
+            {customers.length} {customers.length === 1 ? "customer" : "customers"},{" "}
+            {sortLabels[sort]}
           </p>
         </div>
         <Link href="/app/credit/new">
@@ -28,17 +45,24 @@ export default async function CreditPage(props: PageProps<"/app/credit">) {
         </Link>
       </div>
 
-      <div className="mb-5">
+      <div className="mb-4">
         <SearchBox initialValue={q} />
+      </div>
+      <div className="mb-5">
+        <Suspense fallback={null}>
+          <FilterBar sort={sort} filter={filter} />
+        </Suspense>
       </div>
 
       <div className="overflow-hidden rounded-[var(--radius-lg)] border border-rule bg-paper-raised shadow-[var(--shadow-card)]">
         {customers.length === 0 ? (
           <div className="px-6 py-14 text-center">
             <p className="text-ink-soft">
-              {q ? "No customers match that search." : "No customers yet."}
+              {q || filter !== "all"
+                ? "No customers match that."
+                : "No customers yet."}
             </p>
-            {!q && (
+            {!q && filter === "all" && (
               <Link href="/app/credit/new" className="mt-3 inline-block text-sm text-accent underline underline-offset-4">
                 Record your first credit sale
               </Link>
