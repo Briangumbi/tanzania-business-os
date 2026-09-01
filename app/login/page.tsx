@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { signIn, signUp, type AuthState } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Input";
+import { Field, Input, PasswordInput } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 
 const initialState: AuthState = { error: null };
@@ -70,10 +70,9 @@ export default function LoginPage() {
                 />
               </Field>
               <Field label="Password" htmlFor="password">
-                <Input
+                <PasswordInput
                   id="password"
                   name="password"
-                  type="password"
                   autoComplete="current-password"
                   required
                 />
@@ -109,10 +108,9 @@ export default function LoginPage() {
                 htmlFor="signup-password"
                 hint="At least 8 characters."
               >
-                <Input
+                <PasswordInput
                   id="signup-password"
                   name="password"
-                  type="password"
                   autoComplete="new-password"
                   minLength={8}
                   required
