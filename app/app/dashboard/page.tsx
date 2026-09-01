@@ -48,7 +48,7 @@ export default async function DashboardPage() {
             <h2 className="text-xs font-medium uppercase tracking-[0.06em] text-ink-soft">
               Recent activity
             </h2>
-            <Link href="/app/credit" className="text-xs text-accent hover:underline">
+            <Link href="/app/activity" className="text-xs text-accent hover:underline">
               View all
             </Link>
           </div>

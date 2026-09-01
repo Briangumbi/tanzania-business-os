@@ -43,6 +43,7 @@ export function FilterBar({
           <button
             key={opt.value}
             type="button"
+            aria-pressed={filter === opt.value}
             onClick={() => setParam("filter", opt.value)}
             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
               filter === opt.value
@@ -58,6 +59,7 @@ export function FilterBar({
       <select
         value={sort}
         onChange={(e) => setParam("sort", e.target.value)}
+        aria-label="Sort customers by"
         className="rounded-[var(--radius-sm)] border border-rule-strong bg-paper-raised px-2.5 py-1.5 text-xs text-ink-soft focus:border-accent focus:outline-none"
       >
         {sortOptions.map((opt) => (

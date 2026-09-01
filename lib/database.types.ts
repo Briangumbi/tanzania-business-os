@@ -110,6 +110,37 @@ export type Database = {
           },
         ];
       };
+      activity_log: {
+        Row: {
+          id: string;
+          shop_id: string;
+          customer_id: string | null;
+          customer_name: string;
+          entity_type: string;
+          action: string;
+          summary: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          shop_id: string;
+          customer_id?: string | null;
+          customer_name: string;
+          entity_type: string;
+          action: string;
+          summary: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["activity_log"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_customer_id_fkey";
+            columns: ["customer_id"];
+            referencedRelation: "customers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       customer_balances: {

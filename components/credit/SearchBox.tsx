@@ -30,6 +30,7 @@ export function SearchBox({ initialValue = "" }: { initialValue?: string }) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Search by name or phone…"
+        aria-label="Search customers by name or phone"
         className="w-full rounded-[var(--radius-sm)] border border-rule-strong bg-paper-raised py-2.5 pl-10 pr-3.5 text-[15px] text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
         type="search"
       />

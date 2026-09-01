@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navItems } from "@/components/nav/nav-items";
-import { LogoutIcon } from "@/components/nav/icons";
+import { LogoutIcon, SettingsIcon } from "@/components/nav/icons";
 
 export function AppShell({
   shopName,
@@ -49,15 +49,28 @@ export function AppShell({
           })}
         </nav>
 
-        <form action={onSignOut} className="border-t border-rule p-3">
-          <button
-            type="submit"
-            className="flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium text-ink-soft hover:bg-paper-deep hover:text-ink"
+        <div className="border-t border-rule p-3">
+          <Link
+            href="/app/settings"
+            className={`flex items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium ${
+              pathname === "/app/settings"
+                ? "bg-accent-soft text-accent-strong"
+                : "text-ink-soft hover:bg-paper-deep hover:text-ink"
+            }`}
           >
-            <LogoutIcon className="h-[18px] w-[18px]" />
-            Sign out
-          </button>
-        </form>
+            <SettingsIcon className="h-[18px] w-[18px]" />
+            Settings
+          </Link>
+          <form action={onSignOut}>
+            <button
+              type="submit"
+              className="flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium text-ink-soft hover:bg-paper-deep hover:text-ink"
+            >
+              <LogoutIcon className="h-[18px] w-[18px]" />
+              Sign out
+            </button>
+          </form>
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -66,15 +79,24 @@ export function AppShell({
           <span className="font-serif text-base font-medium text-ink">
             Tanzania Business OS
           </span>
-          <form action={onSignOut}>
-            <button
-              type="submit"
-              aria-label="Sign out"
+          <div className="flex items-center gap-1">
+            <Link
+              href="/app/settings"
+              aria-label="Settings"
               className="rounded-[var(--radius-sm)] p-2 text-ink-soft hover:bg-paper-deep"
             >
-              <LogoutIcon className="h-5 w-5" />
-            </button>
-          </form>
+              <SettingsIcon className="h-5 w-5" />
+            </Link>
+            <form action={onSignOut}>
+              <button
+                type="submit"
+                aria-label="Sign out"
+                className="rounded-[var(--radius-sm)] p-2 text-ink-soft hover:bg-paper-deep"
+              >
+                <LogoutIcon className="h-5 w-5" />
+              </button>
+            </form>
+          </div>
         </header>
 
         <main className="flex-1 pb-20 md:pb-0">{children}</main>

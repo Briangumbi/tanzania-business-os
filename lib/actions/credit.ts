@@ -3,6 +3,9 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { formatTZS } from "@/lib/currency";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/database.types";
 
 async function requireShop() {
   const supabase = await createClient();
@@ -11,6 +14,30 @@ async function requireShop() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   return { supabase, shopId: user.id };
+}
+
+type ActivityEntityType = "customer" | "credit_entry" | "payment";
+type ActivityAction = "created" | "updated" | "deleted";
+
+async function logActivity(
+  supabase: SupabaseClient<Database>,
+  params: {
+    shopId: string;
+    customerId: string | null;
+    customerName: string;
+    entityType: ActivityEntityType;
+    action: ActivityAction;
+    summary: string;
+  }
+) {
+  await supabase.from("activity_log").insert({
+    shop_id: params.shopId,
+    customer_id: params.customerId,
+    customer_name: params.customerName,
+    entity_type: params.entityType,
+    action: params.action,
+    summary: params.summary,
+  });
 }
 
 export type CustomerBalance = {
@@ -33,14 +60,45 @@ export type CustomerFilter = "all" | "overdue" | "settled";
 export async function listCustomers(
   search?: string,
   sort: CustomerSort = "balance",
-  filter: CustomerFilter = "all"
-): Promise<CustomerBalance[]> {
+  filter: CustomerFilter = "all",
+  page = 1,
+  pageSize = 25
+): Promise<{ customers: CustomerBalance[]; total: number }> {
   const { supabase, shopId } = await requireShop();
-  let query = supabase.from("customer_balances").select("*").eq("shop_id", shopId);
+  const term = search?.trim();
 
-  if (search?.trim()) {
-    const term = search.trim();
-    query = query.or(`name.ilike.%${term}%,phone.ilike.%${term}%`);
+  // Built via separate .ilike() calls (each value is bound as a real query
+  // parameter) rather than interpolated into a single .or() filter string —
+  // PostgREST's .or() syntax treats commas/parens/etc. as filter grammar, so
+  // a raw search term there could distort or break the query. Two matched
+  // sets, unioned and deduped in JS, side-steps that entirely.
+  let idsMatchingSearch: Set<string> | null = null;
+  if (term) {
+    const [byName, byPhone] = await Promise.all([
+      supabase
+        .from("customer_balances")
+        .select("customer_id")
+        .eq("shop_id", shopId)
+        .ilike("name", `%${term}%`),
+      supabase
+        .from("customer_balances")
+        .select("customer_id")
+        .eq("shop_id", shopId)
+        .ilike("phone", `%${term}%`),
+    ]);
+    idsMatchingSearch = new Set([
+      ...(byName.data ?? []).map((r) => r.customer_id),
+      ...(byPhone.data ?? []).map((r) => r.customer_id),
+    ]);
+  }
+
+  let query = supabase
+    .from("customer_balances")
+    .select("*", { count: "exact" })
+    .eq("shop_id", shopId);
+
+  if (idsMatchingSearch) {
+    query = query.in("customer_id", [...idsMatchingSearch]);
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -58,7 +116,21 @@ export async function listCustomers(
     query = query.order("balance", { ascending: false });
   }
 
-  const { data, error } = await query;
+  const from = (page - 1) * pageSize;
+  query = query.range(from, from + pageSize - 1);
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+  return { customers: data ?? [], total: count ?? 0 };
+}
+
+export async function listAllCustomersForExport(): Promise<CustomerBalance[]> {
+  const { supabase, shopId } = await requireShop();
+  const { data, error } = await supabase
+    .from("customer_balances")
+    .select("*")
+    .eq("shop_id", shopId)
+    .order("balance", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
@@ -67,6 +139,36 @@ export async function getShopName(): Promise<string> {
   const { supabase, shopId } = await requireShop();
   const { data } = await supabase.from("shops").select("name").eq("id", shopId).single();
   return data?.name ?? "My Duka";
+}
+
+export type ActivityLogEntry = {
+  id: string;
+  customerId: string | null;
+  customerName: string;
+  entityType: ActivityEntityType;
+  action: ActivityAction;
+  summary: string;
+  at: string;
+};
+
+export async function listActivityLog(limit = 50): Promise<ActivityLogEntry[]> {
+  const { supabase, shopId } = await requireShop();
+  const { data, error } = await supabase
+    .from("activity_log")
+    .select("id, customer_id, customer_name, entity_type, action, summary, created_at")
+    .eq("shop_id", shopId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    customerId: r.customer_id,
+    customerName: r.customer_name,
+    entityType: r.entity_type as ActivityEntityType,
+    action: r.action as ActivityAction,
+    summary: r.summary,
+    at: r.created_at,
+  }));
 }
 
 export async function getDashboardData() {
@@ -229,15 +331,17 @@ export async function quickAddCredit(
   if (!amount || amount <= 0) return { error: "Enter a valid amount." };
 
   let customerId: string;
+  let customerName: string;
   const { data: existing } = await supabase
     .from("customers")
-    .select("id")
+    .select("id, name")
     .eq("shop_id", shopId)
     .eq("phone", phone)
     .maybeSingle();
 
   if (existing) {
     customerId = existing.id;
+    customerName = existing.name;
   } else {
     if (!name) return { error: "Enter the customer's name." };
     const { data: created, error: createError } = await supabase
@@ -247,6 +351,15 @@ export async function quickAddCredit(
       .single();
     if (createError || !created) return { error: "Could not create customer." };
     customerId = created.id;
+    customerName = name;
+    await logActivity(supabase, {
+      shopId,
+      customerId,
+      customerName,
+      entityType: "customer",
+      action: "created",
+      summary: `Started a new tab for ${customerName}`,
+    });
   }
 
   const { error: entryError } = await supabase.from("credit_entries").insert({
@@ -257,6 +370,15 @@ export async function quickAddCredit(
     due_date: dueDate,
   });
   if (entryError) return { error: "Could not save the credit entry." };
+
+  await logActivity(supabase, {
+    shopId,
+    customerId,
+    customerName,
+    entityType: "credit_entry",
+    action: "created",
+    summary: `Credit sale of ${formatTZS(amount)} recorded for ${customerName}`,
+  });
 
   revalidatePath("/app/credit");
   revalidatePath("/app/dashboard");
@@ -275,14 +397,23 @@ export async function addCreditEntry(
 
   if (!amount || amount <= 0) return { error: "Enter a valid amount." };
 
-  const { error } = await supabase.from("credit_entries").insert({
-    shop_id: shopId,
-    customer_id: customerId,
-    amount,
-    description,
-    due_date: dueDate,
-  });
+  const { data, error } = await supabase
+    .from("credit_entries")
+    .insert({ shop_id: shopId, customer_id: customerId, amount, description, due_date: dueDate })
+    .select("customers(name)")
+    .single();
   if (error) return { error: "Could not save the credit entry." };
+
+  const customerName =
+    (data?.customers as unknown as { name: string } | null)?.name ?? "Customer";
+  await logActivity(supabase, {
+    shopId,
+    customerId,
+    customerName,
+    entityType: "credit_entry",
+    action: "created",
+    summary: `Credit sale of ${formatTZS(amount)} recorded for ${customerName}`,
+  });
 
   revalidatePath(`/app/credit/${customerId}`);
   revalidatePath("/app/credit");
@@ -301,13 +432,23 @@ export async function addPayment(
 
   if (!amount || amount <= 0) return { error: "Enter a valid amount." };
 
-  const { error } = await supabase.from("payments").insert({
-    shop_id: shopId,
-    customer_id: customerId,
-    amount,
-    note,
-  });
+  const { data, error } = await supabase
+    .from("payments")
+    .insert({ shop_id: shopId, customer_id: customerId, amount, note })
+    .select("customers(name)")
+    .single();
   if (error) return { error: "Could not save the payment." };
+
+  const customerName =
+    (data?.customers as unknown as { name: string } | null)?.name ?? "Customer";
+  await logActivity(supabase, {
+    shopId,
+    customerId,
+    customerName,
+    entityType: "payment",
+    action: "created",
+    summary: `Payment of ${formatTZS(amount)} recorded for ${customerName}`,
+  });
 
   revalidatePath(`/app/credit/${customerId}`);
   revalidatePath("/app/credit");
@@ -335,6 +476,15 @@ export async function updateCustomer(
     .eq("shop_id", shopId);
   if (error) return { error: "Could not update customer." };
 
+  await logActivity(supabase, {
+    shopId,
+    customerId,
+    customerName: name,
+    entityType: "customer",
+    action: "updated",
+    summary: `Updated details for ${name}`,
+  });
+
   revalidatePath(`/app/credit/${customerId}`);
   revalidatePath("/app/credit");
   return { error: null };
@@ -342,12 +492,29 @@ export async function updateCustomer(
 
 export async function deleteCustomer(customerId: string) {
   const { supabase, shopId } = await requireShop();
+
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("name")
+    .eq("id", customerId)
+    .eq("shop_id", shopId)
+    .single();
+
   const { error } = await supabase
     .from("customers")
     .delete()
     .eq("id", customerId)
     .eq("shop_id", shopId);
   if (error) throw error;
+
+  await logActivity(supabase, {
+    shopId,
+    customerId: null,
+    customerName: customer?.name ?? "Customer",
+    entityType: "customer",
+    action: "deleted",
+    summary: `Deleted ${customer?.name ?? "a customer"} and their whole ledger`,
+  });
 
   revalidatePath("/app/credit");
   revalidatePath("/app/dashboard");
@@ -367,12 +534,25 @@ export async function updateCreditEntry(
 
   if (!amount || amount <= 0) return { error: "Enter a valid amount." };
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("credit_entries")
     .update({ amount, description, due_date: dueDate })
     .eq("id", entryId)
-    .eq("shop_id", shopId);
+    .eq("shop_id", shopId)
+    .select("customers(name)")
+    .single();
   if (error) return { error: "Could not update the entry." };
+
+  const customerName =
+    (data?.customers as unknown as { name: string } | null)?.name ?? "Customer";
+  await logActivity(supabase, {
+    shopId,
+    customerId,
+    customerName,
+    entityType: "credit_entry",
+    action: "updated",
+    summary: `Edited a credit entry for ${customerName} (now ${formatTZS(amount)})`,
+  });
 
   revalidatePath(`/app/credit/${customerId}`);
   revalidatePath("/app/credit");
@@ -382,12 +562,31 @@ export async function updateCreditEntry(
 
 export async function deleteCreditEntry(entryId: string, customerId: string) {
   const { supabase, shopId } = await requireShop();
+
+  const { data: entry } = await supabase
+    .from("credit_entries")
+    .select("amount, customers(name)")
+    .eq("id", entryId)
+    .eq("shop_id", shopId)
+    .single();
+
   const { error } = await supabase
     .from("credit_entries")
     .delete()
     .eq("id", entryId)
     .eq("shop_id", shopId);
   if (error) throw error;
+
+  const customerName =
+    (entry?.customers as unknown as { name: string } | null)?.name ?? "Customer";
+  await logActivity(supabase, {
+    shopId,
+    customerId,
+    customerName,
+    entityType: "credit_entry",
+    action: "deleted",
+    summary: `Deleted a credit entry for ${customerName} (was ${formatTZS(entry?.amount ?? 0)})`,
+  });
 
   revalidatePath(`/app/credit/${customerId}`);
   revalidatePath("/app/credit");
@@ -406,12 +605,25 @@ export async function updatePayment(
 
   if (!amount || amount <= 0) return { error: "Enter a valid amount." };
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("payments")
     .update({ amount, note })
     .eq("id", paymentId)
-    .eq("shop_id", shopId);
+    .eq("shop_id", shopId)
+    .select("customers(name)")
+    .single();
   if (error) return { error: "Could not update the payment." };
+
+  const customerName =
+    (data?.customers as unknown as { name: string } | null)?.name ?? "Customer";
+  await logActivity(supabase, {
+    shopId,
+    customerId,
+    customerName,
+    entityType: "payment",
+    action: "updated",
+    summary: `Edited a payment for ${customerName} (now ${formatTZS(amount)})`,
+  });
 
   revalidatePath(`/app/credit/${customerId}`);
   revalidatePath("/app/credit");
@@ -421,12 +633,31 @@ export async function updatePayment(
 
 export async function deletePayment(paymentId: string, customerId: string) {
   const { supabase, shopId } = await requireShop();
+
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("amount, customers(name)")
+    .eq("id", paymentId)
+    .eq("shop_id", shopId)
+    .single();
+
   const { error } = await supabase
     .from("payments")
     .delete()
     .eq("id", paymentId)
     .eq("shop_id", shopId);
   if (error) throw error;
+
+  const customerName =
+    (payment?.customers as unknown as { name: string } | null)?.name ?? "Customer";
+  await logActivity(supabase, {
+    shopId,
+    customerId,
+    customerName,
+    entityType: "payment",
+    action: "deleted",
+    summary: `Deleted a payment for ${customerName} (was ${formatTZS(payment?.amount ?? 0)})`,
+  });
 
   revalidatePath(`/app/credit/${customerId}`);
   revalidatePath("/app/credit");

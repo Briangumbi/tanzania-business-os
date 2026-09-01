@@ -33,6 +33,7 @@ export default function InventoryPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search products…"
+          aria-label="Search products"
           type="search"
           className="w-full rounded-[var(--radius-sm)] border border-rule-strong bg-paper-raised py-2.5 pl-10 pr-3.5 text-[15px] text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
         />
