@@ -14,7 +14,7 @@
 
   --ink: #1e2130;
   --ink-soft: #56503f;
-  --ink-faint: #8a8271;
+  --ink-faint: #6e6858; /* darkened from #8a8271 — the original failed WCAG AA (4.5:1) for text */
 
   --accent: #7a2331;
   --accent-strong: #57171f;
@@ -24,7 +24,7 @@
   --positive-soft: #dfe8dd;
   --negative: #a6362a;
   --negative-soft: #f3ddd6;
-  --warning: #966a1f;
+  --warning: #83591b; /* darkened from #966a1f — the original failed WCAG AA on --warning-soft */
   --warning-soft: #f1e3c6;
 
   --rule: rgba(30, 33, 48, 0.14);
