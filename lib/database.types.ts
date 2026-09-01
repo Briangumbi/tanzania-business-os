@@ -110,6 +110,64 @@ export type Database = {
           },
         ];
       };
+      shop_members: {
+        Row: {
+          id: string;
+          shop_id: string;
+          user_id: string;
+          email: string;
+          role: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          shop_id: string;
+          user_id: string;
+          email: string;
+          role?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["shop_members"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "shop_members_shop_id_fkey";
+            columns: ["shop_id"];
+            referencedRelation: "shops";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      shop_invites: {
+        Row: {
+          id: string;
+          shop_id: string;
+          code: string;
+          created_by: string;
+          created_at: string;
+          expires_at: string | null;
+          used_by: string | null;
+          used_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          shop_id: string;
+          code: string;
+          created_by: string;
+          created_at?: string;
+          expires_at?: string | null;
+          used_by?: string | null;
+          used_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["shop_invites"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "shop_invites_shop_id_fkey";
+            columns: ["shop_id"];
+            referencedRelation: "shops";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       activity_log: {
         Row: {
           id: string;

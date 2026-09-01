@@ -1,22 +1,16 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireShop } from "@/lib/shop-context";
 import { signOut } from "@/lib/actions/auth";
 import { AppShell } from "@/components/nav/AppShell";
 
 export default async function AppLayout({
   children,
 }: LayoutProps<"/app">) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, shopId } = await requireShop();
 
   const { data: shop } = await supabase
     .from("shops")
     .select("name")
-    .eq("id", user.id)
+    .eq("id", shopId)
     .single();
 
   return (

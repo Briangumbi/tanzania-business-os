@@ -1,24 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireShop } from "@/lib/shop-context";
 
-async function requireShop() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  return { supabase, shopId: user.id, email: user.email ?? "" };
-}
-
-export type Shop = { name: string; phone: string | null; email: string };
+export type Shop = { name: string; phone: string | null; email: string; role: "owner" | "staff" };
 
 export async function getShop(): Promise<Shop> {
-  const { supabase, shopId, email } = await requireShop();
+  const { supabase, shopId, email, role } = await requireShop();
   const { data } = await supabase.from("shops").select("name, phone").eq("id", shopId).single();
-  return { name: data?.name ?? "My Duka", phone: data?.phone ?? null, email };
+  return { name: data?.name ?? "My Duka", phone: data?.phone ?? null, email, role };
 }
 
 export type ActionResult = { error: string | null; success?: boolean };

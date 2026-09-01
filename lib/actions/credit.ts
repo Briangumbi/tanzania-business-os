@@ -2,19 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireShop } from "@/lib/shop-context";
 import { formatTZS } from "@/lib/currency";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
-
-async function requireShop() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  return { supabase, shopId: user.id };
-}
 
 type ActivityEntityType = "customer" | "credit_entry" | "payment";
 type ActivityAction = "created" | "updated" | "deleted";

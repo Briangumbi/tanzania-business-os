@@ -2,25 +2,27 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { signIn, signUp, type AuthState } from "@/lib/actions/auth";
+import { signIn, signUp, joinShop, type AuthState } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, PasswordInput } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 
 const initialState: AuthState = { error: null };
 
-export default function LoginPage() {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [signInState, signInAction, signInPending] = useActionState(
-    signIn,
-    initialState
-  );
-  const [signUpState, signUpAction, signUpPending] = useActionState(
-    signUp,
-    initialState
-  );
+const tabs = [
+  { value: "signin", label: "Sign in" },
+  { value: "signup", label: "New shop" },
+  { value: "join", label: "Join team" },
+] as const;
+type Mode = (typeof tabs)[number]["value"];
 
-  const state = mode === "signin" ? signInState : signUpState;
+export default function LoginPage() {
+  const [mode, setMode] = useState<Mode>("signin");
+  const [signInState, signInAction, signInPending] = useActionState(signIn, initialState);
+  const [signUpState, signUpAction, signUpPending] = useActionState(signUp, initialState);
+  const [joinState, joinAction, joinPending] = useActionState(joinShop, initialState);
+
+  const state = mode === "signin" ? signInState : mode === "signup" ? signUpState : joinState;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-paper px-4 py-12 ledger-lines">
@@ -33,41 +35,25 @@ export default function LoginPage() {
         </Link>
 
         <Card className="p-7">
-          <div className="mb-6 flex gap-1 rounded-[var(--radius-sm)] border border-rule bg-paper-deep p-1 text-sm">
-            <button
-              type="button"
-              onClick={() => setMode("signin")}
-              className={`flex-1 rounded-[3px] py-1.5 font-medium transition-colors ${
-                mode === "signin"
-                  ? "bg-paper-raised text-ink shadow-sm"
-                  : "text-ink-soft"
-              }`}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("signup")}
-              className={`flex-1 rounded-[3px] py-1.5 font-medium transition-colors ${
-                mode === "signup"
-                  ? "bg-paper-raised text-ink shadow-sm"
-                  : "text-ink-soft"
-              }`}
-            >
-              New shop
-            </button>
+          <div className="mb-6 flex gap-1 rounded-[var(--radius-sm)] border border-rule bg-paper-deep p-1 text-xs">
+            {tabs.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setMode(tab.value)}
+                className={`flex-1 rounded-[3px] py-1.5 font-medium transition-colors ${
+                  mode === tab.value ? "bg-paper-raised text-ink shadow-sm" : "text-ink-soft"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           {mode === "signin" ? (
             <form action={signInAction} className="flex flex-col gap-4">
               <Field label="Email" htmlFor="email">
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                />
+                <Input id="email" name="email" type="email" autoComplete="email" required />
               </Field>
               <Field label="Password" htmlFor="password">
                 <PasswordInput
@@ -83,14 +69,12 @@ export default function LoginPage() {
               >
                 Forgot password?
               </Link>
-              {state.error ? (
-                <p className="text-sm text-negative">{state.error}</p>
-              ) : null}
+              {state.error ? <p className="text-sm text-negative">{state.error}</p> : null}
               <Button type="submit" disabled={signInPending} className="mt-1">
                 {signInPending ? "Signing in…" : "Sign in"}
               </Button>
             </form>
-          ) : (
+          ) : mode === "signup" ? (
             <form action={signUpAction} className="flex flex-col gap-4">
               <Field label="Shop name" htmlFor="shopName">
                 <Input
@@ -122,11 +106,41 @@ export default function LoginPage() {
                   required
                 />
               </Field>
-              {state.error ? (
-                <p className="text-sm text-negative">{state.error}</p>
-              ) : null}
+              {state.error ? <p className="text-sm text-negative">{state.error}</p> : null}
               <Button type="submit" disabled={signUpPending} className="mt-1">
                 {signUpPending ? "Creating shop…" : "Create shop"}
+              </Button>
+            </form>
+          ) : (
+            <form action={joinAction} className="flex flex-col gap-4">
+              <Field
+                label="Invite code"
+                htmlFor="inviteCode"
+                hint="Ask your shop owner for the code from their Settings page."
+              >
+                <Input
+                  id="inviteCode"
+                  name="inviteCode"
+                  placeholder="e.g. K7M9P2XQ"
+                  className="tabular font-serif uppercase tracking-widest"
+                  required
+                />
+              </Field>
+              <Field label="Email" htmlFor="join-email">
+                <Input id="join-email" name="email" type="email" autoComplete="email" required />
+              </Field>
+              <Field label="Password" htmlFor="join-password" hint="At least 8 characters.">
+                <PasswordInput
+                  id="join-password"
+                  name="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </Field>
+              {state.error ? <p className="text-sm text-negative">{state.error}</p> : null}
+              <Button type="submit" disabled={joinPending} className="mt-1">
+                {joinPending ? "Joining…" : "Join shop"}
               </Button>
             </form>
           )}
