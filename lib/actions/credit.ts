@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireShop } from "@/lib/shop-context";
 import { formatTZS } from "@/lib/currency";
+import { normalizePhone } from "@/lib/whatsapp";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 
@@ -299,7 +300,7 @@ export async function lookupCustomerByPhone(
     .from("customers")
     .select("id, name")
     .eq("shop_id", shopId)
-    .eq("phone", phone.trim())
+    .eq("phone", normalizePhone(phone))
     .maybeSingle();
   return data ? { id: data.id, name: data.name } : null;
 }
@@ -312,13 +313,14 @@ export async function quickAddCredit(
 ): Promise<ActionResult> {
   const { supabase, shopId } = await requireShop();
 
-  const phone = String(formData.get("phone") ?? "").trim();
+  const rawPhone = String(formData.get("phone") ?? "").trim();
+  const phone = normalizePhone(rawPhone);
   const name = String(formData.get("name") ?? "").trim();
   const amount = Number(formData.get("amount"));
   const description = String(formData.get("description") ?? "").trim() || null;
   const dueDate = String(formData.get("dueDate") ?? "").trim() || null;
 
-  if (!phone) return { error: "Phone number is required." };
+  if (!rawPhone) return { error: "Phone number is required." };
   if (!amount || amount <= 0) return { error: "Enter a valid amount." };
 
   let customerId: string;
@@ -454,11 +456,12 @@ export async function updateCustomer(
   const { supabase, shopId } = await requireShop();
   const customerId = String(formData.get("customerId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim();
+  const rawPhone = String(formData.get("phone") ?? "").trim();
+  const phone = normalizePhone(rawPhone);
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
   if (!name) return { error: "Name is required." };
-  if (!phone) return { error: "Phone is required." };
+  if (!rawPhone) return { error: "Phone is required." };
 
   const { error } = await supabase
     .from("customers")
